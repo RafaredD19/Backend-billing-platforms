@@ -1,10 +1,12 @@
 const express = require('express');
 const app = express();
-const pool = require('./src/config/database');
+const billingRoutes = require('./src/modules/billing/billingRoutes');
 
-// Tu lógica de servidor y rutas aquí
+// Configuración de middleware y rutas
+app.use(express.json());
+app.use('/api/v1', billingRoutes);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3080;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

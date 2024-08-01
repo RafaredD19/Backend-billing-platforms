@@ -2,16 +2,24 @@
   "name": "backend-billing-platforms",
   "version": "1.0.0",
   "description": "backend para una plataforma de facturación electrónica integrada con factpro",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.7.2",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "mysql2": "^3.11.0"
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.0",
+    "p-limit": "^6.1.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
   }
 }
