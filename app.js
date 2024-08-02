@@ -15,7 +15,7 @@ app.use(cors({
 app.use(express.json());
 app.use('/api/v1', billingRoutes);
 
-const PORT = process.env.PORT || 5030;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

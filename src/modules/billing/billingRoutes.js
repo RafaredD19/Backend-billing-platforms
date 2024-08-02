@@ -7,5 +7,7 @@ const upload = multer({ storage: multer.memoryStorage() }); // Usar memoria para
 
 router.post('/upload', upload.single('file'), billingController.uploadExcel);
 
+router.get('/facturas', billingController.getFacturas);
+
 module.exports = router;
     

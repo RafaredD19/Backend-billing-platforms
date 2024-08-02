@@ -1,6 +1,8 @@
 const xlsx = require('xlsx');
 const axios = require('axios');
+const pool = require('../../config/database');
 const { getClientInfo } = require('../../providers/sunat');
+const moment = require('moment-timezone');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -15,6 +17,29 @@ const addDays = (date, days) => {
   const result = new Date(date);
   result.setDate(result.getDate() + days);
   return result.toISOString().split('T')[0];
+};
+
+const insertFactura = async (numero_factura, link) => {
+  try {
+    const [rows] = await pool.promise().query('INSERT INTO tb_facturas (numero_factura, link, time) VALUES (?, ?, ?)', [numero_factura, link, moment().tz('America/Lima').format('YYYY-MM-DD HH:mm:ss')]);
+    return rows;
+  } catch (err) {
+    console.error('Error inserting into tb_facturas:', err.message);
+    throw err;
+  }
+};
+
+const getFacturas = async (date) => {
+  try {
+    const sqlQuery = 'SELECT numero_factura, link, time FROM tb_facturas WHERE DATE(time) = ?';
+    console.log('SQL Query:', sqlQuery);
+    console.log('Parameters:', [date]);
+    const [rows] = await pool.promise().query(sqlQuery, [date]);
+    return rows;
+  } catch (err) {
+    console.error('Error retrieving data from tb_facturas:', err.message);
+    throw err;
+  }
 };
 
 const processExcel = async (file) => {
@@ -40,11 +65,12 @@ const processExcel = async (file) => {
 
     const fechaEmision = formatDate(item['F. EMISION']);
     const fechaVencimiento = fechaEmision ? addDays(fechaEmision, 15) : null;
+    const horaEmision = moment().tz('America/Lima').format('HH:mm:ss');
 
     let datos_del_cliente_o_receptor = {
       codigo_tipo_documento_identidad: clienteTipoDocumento,
       numero_documento: clienteNumeroDocumento,
-      apellidos_y_nombres_o_razon_social: item["RAZON SOCIAL"] || '',
+      apellidos_y_nombres_o_razon_social: '',
       codigo_pais: 'PE',
       ubigeo: '',
       direccion: '',
@@ -58,7 +84,8 @@ const processExcel = async (file) => {
         datos_del_cliente_o_receptor = {
           ...datos_del_cliente_o_receptor,
           ubigeo: clientInfo.ubigeo || '',
-          direccion: clientInfo.direccion || ''
+          direccion: clientInfo.direccion || '',
+          apellidos_y_nombres_o_razon_social: clientInfo.nombre
         };
         cache[clienteNumeroDocumento] = datos_del_cliente_o_receptor; // Almacenar en caché
         processedRUCs.add(clienteNumeroDocumento); // Marcar RUC como procesado
@@ -108,20 +135,20 @@ const processExcel = async (file) => {
     // Construcción del objeto "venta_al_credito"
     const venta_al_credito = [{
       cuota: "Cuota001",
-      fecha_de_pago: fechaVencimiento,
+      fecha_de_pago: formatDate(item['F. VCTO']),
       importe: parseFloat(totalVenta)
     }];
 
     const documentData = {
       tipo_documento: "01",
       serie_documento: "F001",
-      numero_documento: item['#'], // Supuesto número de factura o similar
+      numero_documento: "#", // Supuesto número de factura o similar
       fecha_de_emision: fechaEmision,
-      hora_de_emision: "10:10:10",
+      hora_de_emision: horaEmision,
       codigo_tipo_operacion: "0101",
       codigo_tipo_documento: "01",
-      codigo_tipo_moneda: "PEN",
-      fecha_de_vencimiento: fechaVencimiento,
+      codigo_tipo_moneda: item['MON.'] || '',
+      fecha_de_vencimiento: formatDate(item['F. VCTO']),
       numero_orden_de_compra: "",
       nombre_almacen: "XX",
       additional_information: "",
@@ -148,6 +175,9 @@ const processExcel = async (file) => {
           'Content-Type': 'application/json'
         }
       });
+
+      await insertFactura(response.data.data.number, response.data.links.pdf);
+
       results.push(response.data);
     } catch (error) {
       results.push({ error: error.response ? error.response.data : error.message });
@@ -160,5 +190,6 @@ const processExcel = async (file) => {
 };
 
 module.exports = {
-  processExcel
+  processExcel,
+  getFacturas
 };
